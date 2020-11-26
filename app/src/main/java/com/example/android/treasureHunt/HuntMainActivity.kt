@@ -258,7 +258,8 @@ class HuntMainActivity : AppCompatActivity() {
     private fun addGeofenceForClue() {
         if(viewModel.geofenceIsActive()) return
         val currentGeoFenceIndex = viewModel.nextGeofenceIndex()
-        if(currentGeoFenceIndex>= GeofencingConstants.NUM_LANDMARKS){
+
+        if(currentGeoFenceIndex >= GeofencingConstants.NUM_LANDMARKS){
             removeGeofences()
             viewModel.geofenceActivated()
             return
@@ -274,6 +275,25 @@ class HuntMainActivity : AppCompatActivity() {
             .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER)
             .build()
 
+        val geoFenceRequest = GeofencingRequest.Builder()
+            .setInitialTrigger(GeofencingRequest.INITIAL_TRIGGER_ENTER)
+            .addGeofence(geofence)
+            .build()
+
+        geofencingClient.removeGeofences(geoFencingPendingIntent)?.run {
+            addOnCompleteListener {
+                geofencingClient.addGeofences(geoFenceRequest,geoFencingPendingIntent)?.run{
+                    addOnSuccessListener {
+                        Toast.makeText(this@HuntMainActivity,R.string.geofences_added,Toast.LENGTH_SHORT).show()
+                        viewModel.geofenceActivated()
+                    }
+                    addOnFailureListener{
+                        Toast.makeText(this@HuntMainActivity,R.string.geofences_not_added,Toast.LENGTH_SHORT).show()
+                        it.message?.let{message-> Log.v(TAG,message)}
+                    }
+                }
+            }
+        }
     }
 
     /**
@@ -281,7 +301,13 @@ class HuntMainActivity : AppCompatActivity() {
      * permission.
      */
     private fun removeGeofences() {
-        // TODO: Step 12 add in code to remove the geofences
+        if(!foregroundAndBackgroundLocationPermissionApproved()) return
+
+        geofencingClient.removeGeofences(geoFencingPendingIntent)?.run{
+            addOnSuccessListener {
+                Toast.makeText(applicationContext,R.string.geofences_removed,Toast.LENGTH_SHORT).show()
+            }
+        }
     }
     companion object {
         internal const val ACTION_GEOFENCE_EVENT =
